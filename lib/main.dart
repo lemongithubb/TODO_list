@@ -16,6 +16,10 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
+        textTheme: const TextTheme(bodyMedium: TextStyle(fontSize: 24,fontWeight: FontWeight.w400),
+        labelMedium: TextStyle(fontSize: 16,fontWeight: FontWeight.w400),
+        ),
+
       ),
       home: const MyHomePage(title: 'TO-DO List'),
     );
@@ -36,6 +40,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<Task> tasks=[];
 
+  bool isModifying=false;
+  int modifyingIndex=0; 
+  double percent=0.0;
+
   String getToday() {
     DateTime now = DateTime.now();
     String strToday;
@@ -43,6 +51,21 @@ class _MyHomePageState extends State<MyHomePage> {
     strToday = formatter.format(now);
     return strToday;
   }
+
+ void updatePercent(){
+  if(tasks.isEmpty){
+    percent=0.0;
+  }else{
+    var completeTaskCnt=0;
+    for(var i=0;i<tasks.length;i++){
+      if(tasks[i].isComplete){
+        completeTaskCnt++;
+      }
+    }
+    percent=completeTaskCnt/tasks.length;
+  }
+
+ }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +75,8 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
       ),
-      body: Center(
+      body:SingleChildScrollView(
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
@@ -71,14 +95,24 @@ class _MyHomePageState extends State<MyHomePage> {
                       if(_textController.text==''){
                         return;
                       }else{
-                        setState(() {
+                        isModifying
+                        ?  setState(() {
+                          tasks[modifyingIndex].work=_textController.text;
+                          tasks[modifyingIndex].isComplete=false;
+                          _textController.clear();
+                          modifyingIndex=0;
+                          isModifying=false;
+                        })
+                        :setState(() {
                           var task=Task(_textController.text);
                           tasks.add(task);
                           _textController.clear();
                         });
+                        updatePercent();
                       }
+                      
                     },
-                    child: const Text("Add"),
+                    child: isModifying ? const Text("수정") : const Text("추가"),
                   )
                 ],
               ),
@@ -91,7 +125,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   LinearPercentIndicator(
                     width: MediaQuery.of(context).size.width - 50,
                     lineHeight: 14.0,
-                    percent: 0.3,
+                    percent: percent,
+                    progressColor: Colors.purple[300],
+                    backgroundColor: Colors.purple[50],
                   ),
                 ],
               ),
@@ -107,21 +143,35 @@ class _MyHomePageState extends State<MyHomePage> {
                         borderRadius: BorderRadius.all(Radius.zero),
                       ),
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      setState(() {
+                         tasks[i].isComplete=!tasks[i].isComplete;
+                          updatePercent();
+                      });
+                     
+                    },
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_box_outline_blank_rounded),
-                          Text(tasks[i].work),
+                          tasks[i].isComplete 
+                          ? const Icon(Icons.check_box_rounded) 
+                           :const Icon(Icons.check_box_outline_blank_rounded),
+                          Text(tasks[i].work,
+                          style: Theme.of(context).textTheme.labelMedium,
+                          ),
                         ],
                       ),
                     ),
                   ),
                 ),
                 TextButton(
-                  onPressed: () {
-                   
+                  onPressed: isModifying ? null :  () {
+                   setState(() {
+                    isModifying=true;
+                     _textController.text=tasks[i].work;
+                     modifyingIndex=i;
+                   });
                   },
                   child: const Text("수정"),
                 ),
@@ -129,8 +179,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   onPressed: () {
                     setState(() {
                       tasks.remove(tasks[i]);
+                       updatePercent();
                     });
-                    
+                     
                   },
                   child: const Text("삭제"),
                 ),
@@ -140,6 +191,7 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
       ),
+      )
     );
   }
 }
